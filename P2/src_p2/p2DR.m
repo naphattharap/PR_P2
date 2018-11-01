@@ -46,6 +46,14 @@ title("By imagesc function")
 
 surf(reshapedMeanProjection);
 title("By surf function")
+
+% [dataProjected1Img, meanProjection1Img, vectorsProjection1Img ] ...
+%     = reduceDimensionality(grayscaleFeatures(1:2, :,:), 'PCA', 2,labels);
+% gscatter3(dataProjected1Img(:,1),dataProjected1Img(:,2),dataProjected1Img(:,3),stringLabels,7)
+
+
+% 1.2 Plotting projected data points and plot by gsscatter3
+
 % Why do the vectors of the new basis look like faces?
 % Answer:
 
@@ -96,9 +104,9 @@ for i = 1:lenDimension
                                 int32(dimensions(i)),labels  );
     [ dataReprojectedDim ] = reprojectData( dataProjectedDim , ...
                             meanProjectionDim, vectorsProjectionDim);
-    figure()
-    imagesc(reshape(dataReprojectedDim(1,:), 128, 128));
-    title(dimensions(i))
+    %figure()
+    %imagesc(reshape(dataReprojectedDim(1,:), 128, 128));
+    %title(dimensions(i))
 
     squaredError(i) = immse(dataReprojectedDim,grayscaleFeatures);
     fprintf("result of dimensions %0f error %0f \n",dimensions(i), squaredError);
@@ -107,7 +115,7 @@ end
 % 5. Calculate the quadratic error between the images of 
 % the reprojected dataset (from the previous exercise) 
 % and the original images.
-plot(dimensions, squaredError);
+%plot(dimensions, squaredError);
 fprintf('\n The mean-squared error is %0.0f\n', squaredError);
 
 % 6. Divide the data in test and train. 
@@ -116,40 +124,69 @@ fprintf('\n The mean-squared error is %0.0f\n', squaredError);
 % to classify the data. You have to take into account that 
 % SVM is a binary classifier and you have to classify the 7 emotions.
 
-% Split data into 2 folder by k-fold cross validation
-% it shuffles data and return indexes
-K = 2;
+% Split data into K folder by k-fold cross validation
+% it shuffles data and return indexes of folder
+K = 3;
 totalNumberOfImages = length(imagesData);
 indexes = crossvalind('Kfold', totalNumberOfImages, K);
 % From the index obtained above, split to train and test
-trainImages = imagesData(indexes~=1,:,:);
-trainLabels = labels(indexes~=1);
+trainImages = [];
+trainLabels = [];
+% Combine several fold together and leave the last one for testing.
+for k=1:(K-1)
+    trainImages = [trainImages; imagesData(indexes==k,:,:)];
+    trainLabels = [trainLabels, labels(indexes==k)];
+end
+%imagesData(indexes==1,:,:);
+%trainLabels = labels(indexes~=1);
 
-testImages = imagesData(indexes==1,:,:);
-testLabels = labels(indexes==1);
+testImages = imagesData(indexes==K,:,:);
+testLabels = labels(indexes==K);
 
-fprintf("Confirm train labels %f \n",unique(trainLabels));
-fprintf("Confirm test labels %f \n",unique(testLabels));
+fprintf("Confirm train labels %f \n",length(unique(trainLabels)));
+fprintf("Confirm test labels %f \n",length(unique(testLabels)));
 
 % Reduce dimension to N dim
-% Note!! we can test 300 with mahalanobis due to covariance 
+% Note!! we cannot reduce dimention that less than  row data due to
+% covaraince issue 
 % then we set dim to number of columns that less than number of rows.
-classifierDim = 10;
-originalImageDim = 128*128;
+mininumDim = min([length(find(trainLabels==0))...
+                  length(find(trainLabels==1))...
+                  length(find(trainLabels==3))...
+                  length(find(trainLabels==4))...
+                  length(find(trainLabels==5))...
+                  length(find(trainLabels==6))...
+                  length(find(trainLabels==7))...
+                ]);
+
+% if we don't minus -1, mahalanobis will show warning message
+% that our matrix is close to singular and n
+classifierDim = mininumDim -1;
+%classifierDim = 150;
+imageOriginalDim = 128*128;
 % Reshape train/test data from 3 dim to 2 dim
-reshapedTrainImages = reshape(trainImages,size(trainImages,1),originalImageDim);
-[trainDataProjected, meanProjectionArr, vectorsProjectionArr ] ...
-        = reduceDimensionality(reshapedTrainImages, 'PCA', classifierDim ,labels  );
+reshapedTrainImages = reshape(trainImages,size(trainImages,1),imageOriginalDim);
+[trainDataProjected, meanProjectionTrainData, vectorsProjectionTrainData ] ...
+        = reduceDimensionality(reshapedTrainImages, 'PCA', classifierDim ,trainLabels  );
+ 
+    % uncomment below code to see how it works with LDA
+ %[trainDataProjected, meanProjectionTrainData, vectorsProjectionTrainData] ...
+ %     = reduceDimensionality(trainDataProjected, 'LDA', 5,trainLabels);
     
-reshapedTestImages = reshape(testImages,size(trainImages,1),originalImageDim);
-[testDataProjected, meanProjectionArr, vectorsProjectionArr ] ...
-        = reduceDimensionality(reshapedTestImages, 'PCA', classifierDim ,labels  );
+reshapedTestImages = reshape(testImages,size(testImages,1),imageOriginalDim);
+[testDataProjected, meanProjectionTestData, vectorsProjectionTestData ] ...
+        = reduceDimensionality(reshapedTestImages, 'PCA', classifierDim ,testLabels  );
+ 
+ % uncomment below code to see how it works with LDA
+ %[testDataProjected, meanProjectionTestData, vectorsProjectionTestData] ...
+ %    = reduceDimensionality(testDataProjected, 'LDA', 5, testLabels);
     
 % Fit train data to SVM by fitcecoc for multi-classification
 svmModel = fitcecoc(trainDataProjected,trainLabels);
 % Check in-sample error
 isLoss = resubLoss(svmModel);
 fprintf('In-sample error %f \n', isLoss);
+
 
 % Predict test data
 predictLabels = predict(svmModel, testDataProjected);
@@ -158,7 +195,7 @@ predictLabels = predict(svmModel, testDataProjected);
 sumAccuracySvm = 0;
 numberOfTestSample = length(predictLabels);
 for i=1:numberOfTestSample
-   fprintf('Predict %f Actual %f\n', predictLabels(i), testLabels(i));
+   %fprintf('Predict %f Actual %f\n', predictLabels(i), testLabels(i));
    if predictLabels(i) == trainLabels(i)
        sumAccuracySvm = sumAccuracySvm + 1;
    end
@@ -228,7 +265,7 @@ end
 
 sumAccuracyMahalanobis = 0;
 for i=1:numberOfTestSample
-   fprintf('Predict %f Actual %f\n', mahaPredictedLabels(i), testLabels(i));
+   %fprintf('Predict %f Actual %f\n', mahaPredictedLabels(i), testLabels(i));
    if mahaPredictedLabels(i) == testLabels(i)
        sumAccuracyMahalanobis = sumAccuracyMahalanobis + 1;
    end
