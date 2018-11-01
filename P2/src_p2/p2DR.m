@@ -22,8 +22,6 @@ emotionsUsed = [0 1 3 4 5 6 7];
 %%%%%%%%%%%%%%%% EXTRACT FEATURES %%%%%%%%%%%%
 grayscaleFeatures = extractFeaturesFromData(imagesData,'grayscale');
 
-
-
 %%GSCATTER 3 example. Visualize the first three coordiantes of the data.
 %%You can remove this after understanding it! :)
 gscatter3(grayscaleFeatures(:,1),grayscaleFeatures(:,2),grayscaleFeatures(:,3),stringLabels,7)
@@ -32,7 +30,7 @@ gscatter3(grayscaleFeatures(:,1),grayscaleFeatures(:,2),grayscaleFeatures(:,3),s
 % 1.1project them in a space of 3 dimensions using PCA.
 [dataProjected, meanProjection, vectorsProjection ] = reduceDimensionality(grayscaleFeatures, 'PCA', 3,labels);
 % 1.2 Plotting projected data points and plot by gsscatter3
-
+figure();
 gscatter3(dataProjected(:,1),dataProjected(:,2),dataProjected(:,3),stringLabels,7);
 title("3 dimension by PCA")
 
@@ -40,10 +38,11 @@ title("3 dimension by PCA")
 % 2.1 reshape function to make it have dimension 128 × 128 
 reshapedMeanProjection = reshape(meanProjection, [128,128]);
 % 2.2 using the imagesc or surfing
-
+figure();
 imagesc(reshapedMeanProjection);
 title("By imagesc function")
 
+figure();
 surf(reshapedMeanProjection);
 title("By surf function")
 
@@ -72,6 +71,7 @@ title("By surf function")
 [dataProjected3d, meanProjection3d, vectorsProjection3d] = reduceDimensionality(dataProjected300, 'LDA', 3,labels);
 
 % 3.3 Plot with gscatter3
+figure();
 gscatter3(dataProjected3d(:,1),dataProjected3d(:,2),dataProjected3d(:,3),stringLabels,7);
 title("Reduce dimension by LDA");
 
@@ -81,8 +81,8 @@ title("Reduce dimension by LDA");
 %imagesc(reshape(grayscaleFeatures(1,:),128,128));
 % - Reproject them again to the original space
 [ dataReprojected2 ] = reprojectData( dataProjected2 , meanProjection2, vectorsProjection2 );
-gscatter3(dataReprojected2(:,1),dataReprojected2(:,2),dataReprojected2(:,3),stringLabels,7);
-title("Reduce to 2 dim by PCA");
+%gscatter3(dataReprojected2(:,1),dataReprojected2(:,2),dataReprojected2(:,3),stringLabels,7);
+%title("Reduce to 2 dim by PCA");
 % Now, take one of the reprojected samples and plot it as an image.
 reprojectedImage = dataReprojected2(1, :,:);
 imagesc(reshape(reprojectedImage, 128,128));
@@ -104,9 +104,9 @@ for i = 1:lenDimension
                                 int32(dimensions(i)),labels  );
     [ dataReprojectedDim ] = reprojectData( dataProjectedDim , ...
                             meanProjectionDim, vectorsProjectionDim);
-    %figure()
-    %imagesc(reshape(dataReprojectedDim(1,:), 128, 128));
-    %title(dimensions(i))
+    figure()
+    imagesc(reshape(dataReprojectedDim(1,:), 128, 128));
+    title("Image of " + dimensions(i) + " dimensions")
 
     squaredError(i) = immse(dataReprojectedDim,grayscaleFeatures);
     fprintf("result of dimensions %0f error %0f \n",dimensions(i), squaredError);
@@ -115,7 +115,7 @@ end
 % 5. Calculate the quadratic error between the images of 
 % the reprojected dataset (from the previous exercise) 
 % and the original images.
-%plot(dimensions, squaredError);
+plot(dimensions, squaredError);
 fprintf('\n The mean-squared error is %0.0f\n', squaredError);
 
 % 6. Divide the data in test and train. 
